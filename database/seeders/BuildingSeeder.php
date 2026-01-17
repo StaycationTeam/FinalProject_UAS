@@ -11,7 +11,7 @@ class BuildingSeeder extends Seeder
     {
         $buildings = [
             [
-                'name' => 'Main Building',
+                'name' => 'Castle Kingdom',
                 'type' => 'main',
                 'description' => 'Bangunan utama kerajaan, menjadi dasar untuk membangun infrastruktur yang lain.',
                 'gold_cost' => 100,
