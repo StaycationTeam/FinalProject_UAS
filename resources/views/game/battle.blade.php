@@ -21,7 +21,7 @@
             </div>
             <div class="card-body">
                 <pre style="white-space: pre-wrap; font-family: inherit;">
-{{ $result['log'] }}
+                    {{ $result['log'] }}
                 </pre>
             </div>
         </div>

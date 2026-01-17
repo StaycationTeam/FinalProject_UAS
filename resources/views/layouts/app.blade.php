@@ -97,7 +97,7 @@
     <!-- Footer -->
     <footer class="bg-dark text-light py-4 mt-5">
         <div class="container text-center">
-            <p class="mb-0">&copy; {{ date('Y') }} Strategy Game. All rights reserved.</p>
+            <p class="mb-0">Game dibuat dari kelompok WFP tahun 2025-2026</p>
         </div>
     </footer>
 

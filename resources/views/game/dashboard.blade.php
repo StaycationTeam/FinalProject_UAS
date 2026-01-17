@@ -123,9 +123,9 @@
                                         <tr>
                                             <td>
                                                 @if($battle->attacker_id == $kingdom->id)
-                                                    You attacked {{ $battle->defender->name }}
+                                                    You attacked {{ $battle->defender->name ?? 'BOT Kingdom' }}
                                                 @else
-                                                    {{ $battle->attacker->name }} attacked you
+                                                    {{ $battle->attacker->name ?? 'BOT Kingdom' }} attacked you
                                                 @endif
                                             </td>
                                             <td>
