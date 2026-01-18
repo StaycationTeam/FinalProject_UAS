@@ -32,14 +32,14 @@ class GameController extends Controller
         $recentBattles = Battle::where('attacker_id', $kingdom->id)
             ->orWhere('defender_id', $kingdom->id)
             ->latest()
-            ->limit(5)
+            ->take(5)
             ->get();
 
         return view('game.dashboard', compact('kingdom', 'recentBattles'));
     }
 
     /**
-     * Ranking seluruh pemain berdasarkan total attack power
+     * Ranking seluruh pemain
      */
     public function rankings()
     {
@@ -51,7 +51,7 @@ class GameController extends Controller
     }
 
     /**
-     * Halaman Troop pemain
+     * Halaman Troops
      */
     public function troops()
     {
@@ -61,6 +61,17 @@ class GameController extends Controller
         // Ambil semua troop milik kingdom
         $troops = Troop::where('kingdom_id', $kingdom->id)->get();
 
-        return view('game.troops', compact('kingdom', 'troops'));
+        // 🔥 AMBIL RIWAYAT BATTLE (INI YANG KURANG)
+        $recentBattles = Battle::where('attacker_id', $kingdom->id)
+            ->orWhere('defender_id', $kingdom->id)
+            ->latest()
+            ->take(5)
+            ->get();
+
+        return view('game.troops', compact(
+            'kingdom',
+            'troops',
+            'recentBattles'
+        ));
     }
 }

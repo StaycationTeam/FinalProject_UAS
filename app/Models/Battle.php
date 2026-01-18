@@ -10,12 +10,15 @@ class Battle extends Model
     use HasFactory;
 
     protected $fillable = [
-        'attacker_id', 'defender_id', 'attacker_troops', 'defender_troops',
-        'attacker_power', 'defender_power', 'gold_stolen', 'result', 'battle_log'
-    ];
-
-    protected $casts = [
-        'battle_time' => 'datetime'
+        'attacker_id',
+        'defender_id',
+        'attacker_troops',
+        'defender_troops',
+        'attacker_power',
+        'defender_power',
+        'gold_stolen',
+        'result',
+        'battle_log'
     ];
 
     public function attacker()
