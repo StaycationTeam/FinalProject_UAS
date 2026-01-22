@@ -187,10 +187,9 @@ class BattleController extends Controller
         $kingdom = Auth::user()->kingdom;
         $kingdom->updateResources();
         
-        // Get AI kingdoms (kingdoms without user_id or marked as bots)
+        // Get AI kingdoms (kingdoms without user_id = AI/Bots)
         $aiTargets = Kingdom::with(['tribe', 'troops'])
-            ->whereDoesntHave('user') // Kingdoms without users = AI/Bots
-            ->orWhere('is_bot', true) // Or explicitly marked as bot
+            ->whereNull('user_id') // Kingdoms without users = AI/Bots
             ->limit(6)
             ->get();
         
