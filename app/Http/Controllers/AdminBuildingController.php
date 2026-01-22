@@ -20,28 +20,42 @@ class AdminBuildingController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'type' => 'required|string|max:255',
-            'description' => 'required|string',
-            'gold_cost' => 'required|integer|min:0',
-            'level' => 'required|integer|min:1',
-            'gold_production' => 'nullable|integer|min:0',
-            'troop_production' => 'nullable|integer|min:0',
-            'defense_bonus' => 'nullable|integer|min:0',
-            'is_active' => 'nullable|boolean',
-        ]);
+        try {
+            \Log::info('Store Building Request:', $request->all());
+            
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'type' => 'required|string|max:255',
+                'description' => 'required|string',
+                'gold_cost' => 'required|integer|min:0',
+                'level' => 'required|integer|min:1',
+                'gold_production' => 'nullable|integer|min:0',
+                'troop_production' => 'nullable|integer|min:0',
+                'defense_bonus' => 'nullable|integer|min:0',
+            ]);
 
-        // Set default values for nullable fields
-        $validated['gold_production'] = $validated['gold_production'] ?? 0;
-        $validated['troop_production'] = $validated['troop_production'] ?? 0;
-        $validated['defense_bonus'] = $validated['defense_bonus'] ?? 0;
-        $validated['is_active'] = $request->has('is_active') ? 1 : 0;
+            $validated['gold_production'] = $validated['gold_production'] ?? 0;
+            $validated['troop_production'] = $validated['troop_production'] ?? 0;
+            $validated['defense_bonus'] = $validated['defense_bonus'] ?? 0;
+            $validated['is_active'] = $request->has('is_active') ? 1 : 0;
 
-        Building::create($validated);
+            \Log::info('Validated Data:', $validated);
 
-        return redirect()->route('admin.buildings.index')
-            ->with('success', 'Building created successfully!');
+            Building::create($validated);
+
+            \Log::info('Building created successfully');
+
+            return redirect()->route('admin.buildings.index')
+                ->with('success', 'Building created successfully!');
+                
+        } catch (\Exception $e) {
+            \Log::error('Building Creation Error: ' . $e->getMessage());
+            \Log::error('Stack Trace: ' . $e->getTraceAsString());
+            
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Error: ' . $e->getMessage());
+        }
     }
 
     public function edit(Building $building)
