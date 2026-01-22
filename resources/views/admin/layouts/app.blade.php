@@ -48,6 +48,9 @@
                     <a class="nav-link {{ request()->routeIs('admin.buildings.*') ? 'active' : '' }}" href="{{ route('admin.buildings.index') }}">
                         <i class="fas fa-building"></i> Buildings
                     </a>
+                    <a class="nav-link {{ request()->routeIs('admin.appearance.*') ? 'active' : '' }}" href="{{ route('admin.appearance.index') }}">
+                        <i class="fas fa-user-tie"></i> Appearance Parts
+                    </a>
                     <a class="nav-link" href="{{ route('game') }}">
                         <i class="fas fa-gamepad"></i> Back to Game
                     </a>
