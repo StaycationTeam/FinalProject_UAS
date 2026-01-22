@@ -2,307 +2,167 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Kingdom;
 use App\Models\Battle;
-use App\Models\Tribe;
+use App\Models\Kingdom;
+use App\Models\GameConfig;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class BattleController extends Controller
 {
     /**
-     * Show battle page with valid targets
-     * Only kingdoms with barracks AND mine can be attacked
+     * Show available kingdoms to attack
      */
     public function showBattle()
     {
-        $user = Auth::user();
-        $userKingdom = $user->kingdom;
+        $myKingdom = Auth::user()->kingdom;
+        
+        // Get kingdoms that can be attacked (has barracks AND mine)
+        $kingdoms = Kingdom::with(['user', 'tribe', 'kingdomBuildings.building'])
+            ->where('id', '!=', $myKingdom->id)
+            ->get()
+            ->filter(function($kingdom) {
+                return $kingdom->canBeAttacked();
+            });
 
-        $battleHistory = Battle::where('attacker_id', $userKingdom->id)
-            ->where('type', 'pvp')
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
-
-        // Filter: Only attackable kingdoms (has barracks AND mine)
-        $targetKingdoms = Kingdom::with('user', 'tribe')
-            ->where('id', '!=', $userKingdom->id)
-            ->where('total_troops', '>', 0)
-            ->where(function($query) {
-                $query->where(function($q) {
-                    // New system: check kingdom_buildings
-                    $q->whereHas('kingdomBuildings', function($kb) {
-                        $kb->whereHas('building', function($b) {
-                            $b->where('type', 'barracks');
-                        });
-                    })->whereHas('kingdomBuildings', function($kb) {
-                        $kb->whereHas('building', function($b) {
-                            $b->where('type', 'mine');
-                        });
-                    });
-                })->orWhere(function($q) {
-                    // Legacy system: check old columns
-                    $q->where('barracks_count', '>', 0)
-                      ->where('mines_count', '>', 0);
-                });
-            })
-            ->get();
-
-        if ($targetKingdoms->count() === 0) {
-            $targetKingdoms = $this->generateAiTargets(5, $userKingdom);
-        }
-
-        return view('game.battle', compact(
-            'userKingdom',
-            'targetKingdoms',
-            'battleHistory'
-        ));
+        return view('game.battle', compact('kingdoms', 'myKingdom'));
     }
 
     /**
-     * AI Target Generator for training
-     */
-    protected function generateAiTargets(int $count = 5, Kingdom $userKingdom = null)
-    {
-        $tribes = Tribe::inRandomOrder()->limit($count)->get();
-        $aiTargets = collect();
-
-        for ($i = 0; $i < $count; $i++) {
-            $tribe = $tribes[$i % $tribes->count()];
-            $userTroops = $userKingdom ? $userKingdom->total_troops : 20;
-
-            $baseTroops = max(10, (int) round($userTroops * (0.6 + rand(0, 40) / 100)));
-            $baseDefense = (
-                $tribe->melee_defense +
-                $tribe->range_defense +
-                $tribe->magic_defense
-            ) * ($baseTroops / 100);
-
-            $ai = new \stdClass();
-            $ai->id = 100000 + $i;
-            $ai->name = ucfirst($tribe->name) . ' Training Camp ' . ($i + 1);
-            $ai->total_troops = $baseTroops;
-            $ai->total_defense_power = (int) $baseDefense + rand(0, 30);
-            $ai->gold = rand(100, 500);
-            $ai->tribe = $tribe;
-
-            $ai->user = (object)[
-                'username' => 'NPC_' . Str::upper(Str::random(3))
-            ];
-
-            $aiTargets->push($ai);
-        }
-
-        return $aiTargets;
-    }
-
-    /**
-     * Training View
-     */
-    public function showTraining()
-    {
-        $userKingdom = Auth::user()->kingdom;
-
-        $aiTargets = $this->generateAiTargets(3, $userKingdom);
-        session(['training_ai' => $aiTargets]);
-
-        $trainingHistory = Battle::where('attacker_id', $userKingdom->id)
-            ->where('type', 'training')
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
-
-        return view('game.training', compact(
-            'userKingdom',
-            'aiTargets',
-            'trainingHistory'
-        ));
-    }
-
-    /**
-     * Training Attack (AI only)
-     */
-    public function trainingAttack(Request $request)
-    {
-        $request->validate([
-            'defender_id' => 'required'
-        ]);
-
-        $attacker = Auth::user()->kingdom;
-
-        $aiTargets = session('training_ai', collect());
-        $defender = $aiTargets->firstWhere('id', $request->defender_id);
-
-        if (!$defender) {
-            return back()->with('error', 'Training target expired. Refresh page.');
-        }
-
-        return $this->resolveBattle(
-            $attacker,
-            null,
-            $defender->name,
-            $defender->total_troops,
-            $defender->total_defense_power,
-            $defender->gold ?? 0,
-            'training'
-        );
-    }
-
-    /**
-     * PVP Attack
+     * Execute attack
      */
     public function attack(Request $request)
     {
         $request->validate([
-            'defender_id' => 'required'
+            'defender_id' => 'required|exists:kingdoms,id'
         ]);
 
         $attacker = Auth::user()->kingdom;
-        $defenderId = $request->defender_id;
+        $defender = Kingdom::with('troops')->findOrFail($request->defender_id);
 
-        // AI Target
-        if ($defenderId >= 100000) {
-            $aiTargets = $this->generateAiTargets(10, $attacker);
-            $defender = $aiTargets->firstWhere('id', $defenderId);
+        // Validation
+        if ($attacker->id === $defender->id) {
+            return redirect()->back()->with('error', 'You cannot attack yourself!');
+        }
 
-            if (!$defender) {
-                return back()->with('error', 'Target not found.');
+        if (!$defender->canBeAttacked()) {
+            return redirect()->back()->with('error', 'This kingdom cannot be attacked yet (missing barracks or mine).');
+        }
+
+        if ($attacker->total_troops <= 0) {
+            return redirect()->back()->with('error', 'You have no troops to attack!');
+        }
+
+        DB::transaction(function() use ($attacker, $defender, &$result) {
+            $attackPower = $attacker->calculateTotalAttackPower();
+            $defensePower = $defender->calculateTotalDefensePower();
+
+            $goldStealPercentage = GameConfig::getAttackGoldStealPercentage();
+
+            // Determine battle outcome
+            if ($attackPower > $defensePower) {
+                // ATTACKER WINS
+                $goldStolen = (int) ($defender->gold * ($goldStealPercentage / 100));
+                
+                // Transfer gold
+                $defender->decrement('gold', $goldStolen);
+                $attacker->increment('gold', $goldStolen);
+
+                // Calculate defender troop losses
+                $powerDifference = $attackPower - $defensePower;
+                $defenderTroops = $defender->troops;
+                
+                if ($defenderTroops) {
+                    $troopsKilled = (int) min($defenderTroops->quantity, ceil($powerDifference / 10));
+                    $defenderTroops->decrement('quantity', $troopsKilled);
+                    $defender->update(['total_troops' => $defenderTroops->quantity]);
+                }
+
+                $result = [
+                    'success' => true,
+                    'message' => "Victory! You stole {$goldStolen} gold from {$defender->name}!",
+                    'gold_stolen' => $goldStolen,
+                    'attacker_troops_lost' => 0,
+                    'defender_troops_lost' => $troopsKilled ?? 0,
+                ];
+            } else {
+                // DEFENDER WINS - All attacker troops die
+                $attackerTroops = $attacker->troops;
+                $attackerTroopsKilled = $attackerTroops->quantity;
+                
+                $attackerTroops->update(['quantity' => 0]);
+                $attacker->update(['total_troops' => 0]);
+
+                // Calculate defender troop losses
+                $powerDifference = $defensePower - $attackPower;
+                $defenderTroops = $defender->troops;
+                
+                if ($defenderTroops && $defenderTroops->quantity > 0) {
+                    // Calculate surviving troops
+                    $troopDefenseValue = $powerDifference / $defenderTroops->quantity;
+                    $survivingTroops = (int) max(0, ceil($troopDefenseValue));
+                    $troopsLost = $defenderTroops->quantity - $survivingTroops;
+                    
+                    $defenderTroops->update(['quantity' => $survivingTroops]);
+                    $defender->update(['total_troops' => $survivingTroops]);
+                } else {
+                    $troopsLost = 0;
+                }
+
+                $result = [
+                    'success' => false,
+                    'message' => "Defeat! All your troops ({$attackerTroopsKilled}) were killed!",
+                    'gold_stolen' => 0,
+                    'attacker_troops_lost' => $attackerTroopsKilled,
+                    'defender_troops_lost' => $troopsLost,
+                ];
             }
 
-            return $this->resolveBattle(
-                $attacker,
-                null,
-                $defender->name,
-                $defender->total_troops,
-                $defender->total_defense_power,
-                $defender->gold ?? 0,
-                'pvp'
-            );
-        }
+            // Record battle
+            Battle::create([
+                'attacker_id' => $attacker->id,
+                'defender_id' => $defender->id,
+                'attacker_troops' => $attacker->total_troops,
+                'defender_troops' => $defender->total_troops,
+                'gold_stolen' => $result['gold_stolen'],
+                'winner_id' => $result['success'] ? $attacker->id : $defender->id,
+            ]);
 
-        // Real Player Target
-        $defender = Kingdom::find($defenderId);
+            // Update power calculations
+            $attacker->updatePower();
+            $defender->updatePower();
+        });
 
-        if (!$defender) {
-            return back()->with('error', 'Target not found.');
-        }
-
-        // Check if target can be attacked
-        if (!$defender->canBeAttacked()) {
-            return back()->with('error', 'This kingdom cannot be attacked yet. They need barracks and mine.');
-        }
-
-        return $this->resolveBattle(
-            $attacker,
-            $defender,
-            $defender->name,
-            $defender->total_troops,
-            $defender->total_defense_power,
-            $defender->gold,
-            'pvp'
+        return redirect()->back()->with(
+            $result['success'] ? 'success' : 'error',
+            $result['message']
         );
     }
 
     /**
-     * Battle Resolution Engine - According to Requirements
-     * 
-     * Rules:
-     * - If attack > defense: steal 90% of defender's gold
-     * - If attack fails: all attacker troops die
-     * - Defender troops: (defense_power - attack_power) / troops_quantity = survivors
+     * Show training mode (practice battles)
      */
-    protected function resolveBattle(
-        Kingdom $attacker,
-        $defenderModel,
-        string $defenderName,
-        int $defTroops,
-        int $defPower,
-        int $defGold,
-        string $type
-    ) {
-        $attPower = $attacker->total_attack_power;
-        $isWin = $attPower > $defPower;
-        $isTraining = $type === 'training';
+    public function showTraining()
+    {
+        $kingdom = Auth::user()->kingdom;
+        return view('game.training', compact('kingdom'));
+    }
 
-        $goldStolen = 0;
-        $attackerTroopsLost = 0;
-        $defenderTroopsLost = 0;
-        $battleLog = '';
+    /**
+     * Training attack (practice mode)
+     */
+    public function trainingAttack(Request $request)
+    {
+        $kingdom = Auth::user()->kingdom;
+        
+        $attackPower = $kingdom->calculateTotalAttackPower();
+        $defensePower = rand(50, 200); // Random AI defense
 
-        DB::transaction(function() use (
-            &$goldStolen, &$attackerTroopsLost, &$defenderTroopsLost, &$battleLog,
-            $attacker, $defenderModel, $defenderName, $defTroops, $defPower, $defGold,
-            $attPower, $isWin, $isTraining
-        ) {
-            if ($isWin) {
-                // ATTACKER WINS
-                if (!$isTraining && $defenderModel) {
-                    // Steal 90% gold
-                    $goldStolen = (int) floor($defGold * 0.9);
-                    $attacker->increment('gold', $goldStolen);
-                    $defenderModel->decrement('gold', $goldStolen);
-                    
-                    // All defender troops die
-                    $defenderTroopsLost = $defTroops;
-                    if ($defenderModel->troops) {
-                        $defenderModel->troops->update(['quantity' => 0]);
-                    }
-                    $defenderModel->update(['total_troops' => 0]);
-                    $defenderModel->updatePower();
-                }
-                
-                $battleLog = "Victory! You defeated {$defenderName}" . 
-                    ($goldStolen > 0 ? " and stole {$goldStolen} gold (90% of their treasury)!" : "!");
-            } else {
-                // ATTACKER LOSES
-                // All attacker troops die
-                $attackerTroopsLost = $attacker->total_troops;
-                if ($attacker->troops) {
-                    $attacker->troops->update(['quantity' => 0]);
-                }
-                $attacker->update(['total_troops' => 0]);
-                $attacker->updatePower();
+        $message = $attackPower > $defensePower
+            ? "Training Success! Your attack power ({$attackPower}) defeated the AI ({$defensePower})"
+            : "Training Failed! The AI defense ({$defensePower}) was stronger than your attack ({$attackPower})";
 
-                // Defender troops calculation: (defense_points - attack_points) / troops = survivors
-                if (!$isTraining && $defenderModel && $defTroops > 0) {
-                    $pointDifference = $defPower - $attPower;
-                    $survivalRatio = $pointDifference / $defTroops;
-                    $survivingTroops = max(0, (int) floor($defTroops * ($survivalRatio / 100)));
-                    $defenderTroopsLost = $defTroops - $survivingTroops;
-                    
-                    if ($defenderModel->troops) {
-                        $defenderModel->troops->update(['quantity' => $survivingTroops]);
-                    }
-                    $defenderModel->update(['total_troops' => $survivingTroops]);
-                    $defenderModel->updatePower();
-                }
-
-                $battleLog = "Defeat! {$defenderName} repelled your attack. All your troops were lost!";
-            }
-        });
-
-        // Record battle
-        Battle::create([
-            'attacker_id' => $attacker->id,
-            'defender_id' => $defenderModel->id ?? null,
-            'attacker_troops' => $attacker->total_troops,
-            'defender_troops' => $defTroops,
-            'attacker_power' => $attPower,
-            'defender_power' => $defPower,
-            'gold_stolen' => $goldStolen,
-            'result' => $isWin ? 'win' : 'lose',
-            'battle_log' => $battleLog,
-            'type' => $type,
-        ]);
-
-        return redirect()->back()->with('battle_result', [
-            'result' => $isWin ? 'win' : 'lose',
-            'gold_stolen' => $goldStolen,
-            'troops_lost' => $attackerTroopsLost,
-            'log' => $battleLog
-        ]);
+        return redirect()->back()->with('info', $message);
     }
 }
