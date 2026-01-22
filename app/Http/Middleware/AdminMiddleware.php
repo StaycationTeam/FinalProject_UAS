@@ -7,9 +7,9 @@ use Illuminate\Http\Request;
 
 class AdminMiddleware
 {
-    public function handle(Request $request, Closure $next)
+    public function handle($request, Closure $next)
     {
-        if (!session('is_admin')) {
+        if (!session()->has('is_admin')) {
             return redirect()->route('admin.login');
         }
 

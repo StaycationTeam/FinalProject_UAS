@@ -46,7 +46,7 @@ Route::middleware('auth')->group(function () {
 | ADMIN AUTH (TERPISAH)
 |--------------------------------------------------------------------------
 */
-Route::prefix('admin')->group(function () {
+Route::middleware('web')->prefix('admin')->group(function () {
 
     Route::get('/login', [AdminAuthController::class, 'showLogin'])
         ->name('admin.login');
@@ -86,7 +86,12 @@ Route::prefix('admin')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::get('/', function () {
+    if (session()->has('is_admin')) {
+        return redirect('/admin/dashboard');
+    }
+
     return auth()->check()
         ? redirect('/dashboard')
         : redirect('/login');
 });
+

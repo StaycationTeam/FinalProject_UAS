@@ -18,17 +18,11 @@ class AdminAuthController extends Controller
             'password' => 'required'
         ]);
 
-        $adminPassword = env('ADMIN_PASSWORD');
-
-        if (!$adminPassword) {
-            abort(500, 'Admin password not set');
-        }
-
-        if (!Hash::check($request->password, bcrypt($adminPassword))) {
+        if ($request->password !== env('ADMIN_PASSWORD')) {
             return back()->with('error', 'Password admin salah.');
         }
 
-        session(['is_admin' => true]);
+        session()->put('is_admin', true);
 
         return redirect()->route('admin.dashboard');
     }
