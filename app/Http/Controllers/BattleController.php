@@ -187,7 +187,22 @@ class BattleController extends Controller
         $kingdom = Auth::user()->kingdom;
         $kingdom->updateResources();
         
-        return view('game.training', compact('kingdom'));
+        // Get AI kingdoms (kingdoms without user_id or marked as bots)
+        $aiTargets = Kingdom::with(['tribe', 'troops'])
+            ->whereDoesntHave('user') // Kingdoms without users = AI/Bots
+            ->orWhere('is_bot', true) // Or explicitly marked as bot
+            ->limit(6)
+            ->get();
+        
+        // Get training history (battles with type='training')
+        $trainingHistory = Battle::where('attacker_id', $kingdom->id)
+            ->where('type', 'training')
+            ->with(['defender'])
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+        
+        return view('game.training', compact('kingdom', 'aiTargets', 'trainingHistory'));
     }
 
     /**
@@ -195,15 +210,38 @@ class BattleController extends Controller
      */
     public function trainingAttack(Request $request)
     {
-        $kingdom = Auth::user()->kingdom;
+        $request->validate([
+            'defender_id' => 'required|exists:kingdoms,id'
+        ]);
+
+        $attacker = Auth::user()->kingdom;
+        $attacker->updateResources();
         
-        $attackPower = $kingdom->calculateTotalAttackPower();
-        $defensePower = rand(50, 200); // Random AI defense
+        $defender = Kingdom::with('troops')->findOrFail($request->defender_id);
+        
+        // Calculate powers
+        $attackPower = $attacker->calculateTotalAttackPower();
+        $defensePower = $defender->calculateTotalDefensePower();
+        
+        // Determine winner
+        $didWin = $attackPower > $defensePower;
+        $winnerId = $didWin ? $attacker->id : $defender->id;
+        
+        // Record training battle (no gold, no troop losses)
+        Battle::create([
+            'attacker_id' => $attacker->id,
+            'defender_id' => $defender->id,
+            'attacker_troops' => $attackPower, // Store power instead of troops for training
+            'defender_troops' => $defensePower,
+            'gold_stolen' => 0, // No gold in training
+            'winner_id' => $winnerId,
+            'type' => 'training', // Mark as training battle
+        ]);
+        
+        $message = $didWin
+            ? "Training Success! Your attack power ({$attackPower}) defeated {$defender->name}'s defense ({$defensePower})"
+            : "Training Failed! {$defender->name}'s defense ({$defensePower}) was stronger than your attack ({$attackPower})";
 
-        $message = $attackPower > $defensePower
-            ? "Training Success! Your attack power ({$attackPower}) defeated the AI ({$defensePower})"
-            : "Training Failed! The AI defense ({$defensePower}) was stronger than your attack ({$attackPower})";
-
-        return redirect()->back()->with('info', $message);
+        return redirect()->back()->with($didWin ? 'success' : 'info', $message);
     }
 }
