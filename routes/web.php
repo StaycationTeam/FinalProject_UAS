@@ -32,12 +32,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/rankings', [GameController::class, 'rankings'])->name('game.rankings');
     Route::get('/troops', [GameController::class, 'troops'])->name('game.troops');
 
+    // Buildings Management
     Route::get('/buildings', [KingdomController::class, 'showBuildings'])->name('kingdom.buildings');
+    Route::post('/kingdom/purchase-building', [KingdomController::class, 'purchaseBuilding'])->name('kingdom.purchase');
+    Route::post('/kingdom/upgrade-building', [KingdomController::class, 'upgradeBuilding'])->name('kingdom.upgrade');
+    
+    // Legacy building routes (backward compatibility)
     Route::post('/build-barracks', [KingdomController::class, 'buildBarracks'])->name('kingdom.build.barracks');
     Route::post('/build-mine', [KingdomController::class, 'buildMine'])->name('kingdom.build.mine');
     Route::post('/build-walls', [KingdomController::class, 'buildWalls'])->name('kingdom.build.walls');
     Route::post('/upgrade-main', [KingdomController::class, 'upgradeMainBuilding'])->name('kingdom.upgrade.main');
 
+    // Battle System
     Route::get('/battle', [BattleController::class, 'showBattle'])->name('game.battle');
     Route::post('/attack', [BattleController::class, 'attack'])->name('game.attack');
 
