@@ -174,30 +174,34 @@
                                 </thead>
                                 <tbody>
                                     @foreach($recentBattles as $battle)
+                                        @php
+                                            $isAttacker = $battle->attacker_id == $kingdom->id;
+                                            $didWin = $battle->winner_id == $kingdom->id;
+                                        @endphp
                                         <tr style="border-color: #334155;">
                                             <td class="align-middle">
-                                                @if($battle->attacker_id == $kingdom->id)
-                                                    <span class="text-info">You</span> attacked <span class="fw-bold">{{ $battle->defender->name ?? 'BOT Kingdom' }}</span>
+                                                @if($isAttacker)
+                                                    <span class="text-danger">{{ $battle->attacker->name ?? 'You' }}</span> attacked <span class="fw-bold">{{ $battle->defender->name ?? 'AI Opponent' }}</span>
                                                 @else
-                                                    <span class="fw-bold text-danger">{{ $battle->attacker->name ?? 'BOT Kingdom' }}</span> attacked you
+                                                    <span class="fw-bold text-danger">{{ $battle->attacker->name ?? 'AI Opponent' }}</span> attacked you
                                                 @endif
                                             </td>
                                             <td class="align-middle">
-                                                @if($battle->attacker_id == $kingdom->id)
-                                                    <span class="badge {{ $battle->result == 'win' ? 'bg-success' : 'bg-danger' }}">
-                                                        {{ $battle->result == 'win' ? 'VICTORY' : 'DEFEAT' }}
+                                                @if($didWin)
+                                                    <span class="badge bg-success">
+                                                        {{ $isAttacker ? 'VICTORY' : 'DEFENSE SUCCESS' }}
                                                     </span>
                                                 @else
-                                                    <span class="badge {{ $battle->result == 'win' ? 'bg-danger' : 'bg-success' }}">
-                                                        {{ $battle->result == 'win' ? 'DEFENSE FAILED' : 'DEFENSE SUCCESS' }}
+                                                    <span class="badge bg-danger">
+                                                        {{ $isAttacker ? 'DEFEAT' : 'DEFENSE FAILED' }}
                                                     </span>
                                                 @endif
                                             </td>
                                             <td class="align-middle font-mono">
-                                                @if($battle->attacker_id == $kingdom->id && $battle->result == 'win')
-                                                    <span class="text-gold">+{{ $battle->gold_stolen }}</span>
-                                                @elseif($battle->defender_id == $kingdom->id && $battle->result == 'win')
-                                                    <span class="text-danger">-{{ $battle->gold_stolen }}</span>
+                                                @if($isAttacker && $didWin)
+                                                    <span class="text-gold">+{{ number_format($battle->gold_stolen) }}</span>
+                                                @elseif(!$isAttacker && !$didWin)
+                                                    <span class="text-danger">-{{ number_format($battle->gold_stolen) }}</span>
                                                 @else
                                                     <span class="text-muted">0</span>
                                                 @endif
