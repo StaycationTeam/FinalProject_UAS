@@ -14,8 +14,11 @@ return new class extends Migration
             $table->foreignId('building_id')->constrained('buildings')->onDelete('cascade');
             $table->integer('quantity')->default(1);
             $table->integer('level')->default(1);
+            $table->timestamp('last_production_at')->nullable();
             $table->timestamps();
-            
+
+            // Composite index for faster queries
+            $table->index(['kingdom_id', 'building_id']);
             $table->unique(['kingdom_id', 'building_id']);
         });
     }
