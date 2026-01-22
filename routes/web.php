@@ -7,6 +7,7 @@ use App\Http\Controllers\KingdomController;
 use App\Http\Controllers\BattleController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminAuthController;
+use App\Http\Controllers\AdminBuildingController;
 use App\Http\Controllers\Auth\RegisterController;
 
 /*
@@ -72,12 +73,14 @@ Route::middleware('web')->prefix('admin')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard'])
             ->name('admin.dashboard');
 
-        Route::get('/buildings', [AdminController::class, 'buildingSettings'])
-            ->name('admin.buildings');
+        // Buildings CRUD Routes
+        Route::resource('buildings', AdminBuildingController::class)
+            ->names('admin.buildings');
+        
+        Route::patch('buildings/{building}/toggle', [AdminBuildingController::class, 'toggleActive'])
+            ->name('admin.buildings.toggle');
 
-        Route::put('/buildings/{id}', [AdminController::class, 'updateBuilding'])
-            ->name('admin.buildings.update');
-
+        // Legacy routes (keep for backward compatibility)
         Route::get('/tribes', [AdminController::class, 'tribes'])
             ->name('admin.tribes');
 
@@ -99,5 +102,4 @@ Route::get('/', function () {
     return auth()->check()
         ? redirect('/dashboard')
         : redirect('/login');
-});
-
+})->name('game');
