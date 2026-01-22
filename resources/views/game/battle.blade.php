@@ -197,6 +197,7 @@
 
                                 @php
                                     $isAttacker = $battle->attacker_id == $userKingdom->id;
+                                    $didWin = $battle->winner_id == $userKingdom->id;
 
                                     $opponentKingdom = $isAttacker ? $battle->defender : $battle->attacker;
 
@@ -220,25 +221,25 @@
                                     {{-- Opponent --}}
                                     <td class="align-middle">{{ $opponentUser }}</td>
 
-                                    {{-- Result --}}
+                                    {{-- Result (Based on winner_id) --}}
                                     <td class="align-middle">
-                                        @if($isAttacker)
-                                            <span class="badge {{ $battle->result == 'win' ? 'bg-success' : 'bg-danger' }}">
-                                                {{ $battle->result == 'win' ? 'VICTORY' : 'DEFEAT' }}
+                                        @if($didWin)
+                                            <span class="badge bg-success">
+                                                {{ $isAttacker ? 'VICTORY' : 'DEFENDED' }}
                                             </span>
                                         @else
-                                            <span class="badge {{ $battle->result == 'win' ? 'bg-danger' : 'bg-success' }}">
-                                                {{ $battle->result == 'win' ? 'RAID FAILED' : 'DEFENDED' }}
+                                            <span class="badge bg-danger">
+                                                {{ $isAttacker ? 'DEFEAT' : 'RAID FAILED' }}
                                             </span>
                                         @endif
                                     </td>
 
                                     {{-- Gold --}}
                                     <td class="align-middle font-mono">
-                                        @if($isAttacker && $battle->result == 'win')
+                                        @if($isAttacker && $didWin)
                                             <span class="text-gold">+{{ number_format($battle->gold_stolen) }}</span>
 
-                                        @elseif(!$isAttacker && $battle->result == 'win')
+                                        @elseif(!$isAttacker && !$didWin)
                                             <span class="text-danger">-{{ number_format($battle->gold_stolen) }}</span>
 
                                         @else
