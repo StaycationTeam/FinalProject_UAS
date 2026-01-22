@@ -8,13 +8,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Make email unique if not already
-        Schema::table('users', function (Blueprint $table) {
+        // Check if email column already has unique constraint
+        $sm = Schema::getConnection()->getDoctrineSchemaManager();
+        $indexesFound = $sm->listTableIndexes('users');
+        
+        Schema::table('users', function (Blueprint $table) use ($indexesFound) {
             // Drop existing index if exists
-            try {
-                $table->dropIndex(['email']);
-            } catch (\Exception $e) {
-                // Index might not exist, continue
+            foreach ($indexesFound as $index) {
+                if ($index->isUnique() && in_array('email', $index->getColumns())) {
+                    // Already has unique constraint, skip
+                    return;
+                }
             }
             
             // Add unique constraint
@@ -25,7 +29,11 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropUnique(['email']);
+            try {
+                $table->dropUnique(['email']);
+            } catch (\Exception $e) {
+                // Index might not exist, ignore
+            }
         });
     }
 };
