@@ -269,11 +269,11 @@
                             <div class="d-flex gap-3 bg-dark px-3 py-1 rounded border border-secondary">
                                 <div title="Gold">
                                     <i class="fas fa-coins text-gold me-1"></i>
-                                    <span class="stat-value text-gold">{{ number_format(auth()->user()->kingdom->gold) }}</span>
+                                    <span class="stat-value text-gold" id="resource-gold">{{ number_format(auth()->user()->kingdom->gold) }}</span>
                                 </div>
                                 <div title="Troops">
                                     <i class="fas fa-user-shield text-blue me-1"></i>
-                                    <span class="stat-value">{{ number_format(auth()->user()->kingdom->total_troops) }}</span>
+                                    <span class="stat-value" id="resource-troops">{{ number_format(auth()->user()->kingdom->total_troops) }}</span>
                                 </div>
                             </div>
                         </li>
@@ -328,11 +328,33 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Auto-update resources logic would go here
+        // Auto-update resources every 10 seconds
         @auth
         setInterval(function() {
-            // Placeholder for resource update
-        }, 30000);
+            fetch('{{ route("game.resources") }}', {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Update Navbar Resources
+                const goldEl = document.getElementById('resource-gold');
+                const troopsEl = document.getElementById('resource-troops');
+                
+                if (goldEl) goldEl.innerText = data.gold_formatted;
+                if (troopsEl) troopsEl.innerText = data.troops_formatted;
+
+                // Also update Dashboard cards if they exist
+                const dashGold = document.querySelector('.stat-number.text-gold');
+                const dashTroops = document.querySelector('.stat-number.text-blue');
+
+                if (dashGold) dashGold.innerText = data.gold_formatted;
+                if (dashTroops) dashTroops.innerText = data.troops_formatted;
+            })
+            .catch(error => console.error('Error updating resources:', error));
+        }, 10000); // Check every 10 seconds
         @endauth
         
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
