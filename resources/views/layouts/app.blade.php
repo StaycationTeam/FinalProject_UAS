@@ -43,6 +43,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="{{ route('game.training') }}">
+                            <i class="fas fa-dumbbell"></i> Training
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="{{ route('game.rankings') }}">
                             <i class="fas fa-trophy"></i> Rankings
                         </a>

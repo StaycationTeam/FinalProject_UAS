@@ -18,7 +18,8 @@ class Battle extends Model
         'defender_power',
         'gold_stolen',
         'result',
-        'battle_log'
+        'battle_log',
+        'type'
     ];
 
     public function attacker()

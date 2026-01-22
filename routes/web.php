@@ -39,6 +39,12 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/battle', [BattleController::class, 'showBattle'])->name('game.battle');
     Route::post('/attack', [BattleController::class, 'attack'])->name('game.attack');
+
+    Route::get('/training', [BattleController::class, 'showTraining'])
+        ->name('game.training');
+
+    Route::post('/training/attack', [BattleController::class, 'trainingAttack'])
+        ->name('game.training.attack');
 });
 
 /*

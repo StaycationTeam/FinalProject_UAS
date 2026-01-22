@@ -11,68 +11,70 @@ use Illuminate\Support\Str;
 
 class BattleController extends Controller
 {
+    /**
+     * =============================
+     * PVP / BATTLE NORMAL
+     * =============================
+     */
     public function showBattle()
     {
         $user = Auth::user();
         $userKingdom = $user->kingdom;
 
-        // Battle history
         $battleHistory = Battle::where('attacker_id', $userKingdom->id)
-            ->orWhere('defender_id', $userKingdom->id)
+            ->where('type', 'pvp')
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
 
-        // Target kingdom asli
         $targetKingdoms = Kingdom::with('user', 'tribe')
             ->where('id', '!=', $userKingdom->id)
             ->where('total_troops', '>', 0)
             ->get();
 
-        // Jika tidak ada lawan asli → gunakan AI
         if ($targetKingdoms->count() === 0) {
             $targetKingdoms = $this->generateAiTargets(5, $userKingdom);
         }
 
-        return view('game.battle', compact('userKingdom', 'targetKingdoms', 'battleHistory'));
+        return view('game.battle', compact(
+            'userKingdom',
+            'targetKingdoms',
+            'battleHistory'
+        ));
     }
 
-    /**
-     * Generate AI musuh
+
+   /**
+     * =============================
+     * AI GENERATOR
+     * =============================
      */
     protected function generateAiTargets(int $count = 5, Kingdom $userKingdom = null)
     {
         $tribes = Tribe::inRandomOrder()->limit($count)->get();
-
-        while ($tribes->count() < $count) {
-            $more = Tribe::inRandomOrder()->limit($count - $tribes->count())->get();
-            $tribes = $tribes->concat($more);
-        }
-
         $aiTargets = collect();
 
         for ($i = 0; $i < $count; $i++) {
-            $tribe = $tribes[$i];
+            $tribe = $tribes[$i % $tribes->count()];
+            $userTroops = $userKingdom ? $userKingdom->total_troops : 20;
 
-            $userTroops = $userKingdom ? (int) $userKingdom->total_troops : 20;
-
-            // Troop & defense AI
-            $baseTroops = max(10, (int) round($userTroops * (0.6 + (mt_rand(0, 40) / 100))));
-            $baseDefense = (int) round(
-                ($tribe->melee_defense + $tribe->range_defense + $tribe->magic_defense) * ($baseTroops / 100)
-            );
+            $baseTroops = max(10, (int) round($userTroops * (0.6 + rand(0, 40) / 100)));
+            $baseDefense = (
+                $tribe->melee_defense +
+                $tribe->range_defense +
+                $tribe->magic_defense
+            ) * ($baseTroops / 100);
 
             $ai = new \stdClass();
-            $ai->id = 100000 + $i; // AI ID start at 100000
-            $ai->name = ucfirst($tribe->name) . ' Outpost ' . ($i + 1);
+            $ai->id = 100000 + $i;
+            $ai->name = ucfirst($tribe->name) . ' Training Camp ' . ($i + 1);
             $ai->total_troops = $baseTroops;
-            $ai->total_defense_power = $baseDefense + mt_rand(0, 30);
+            $ai->total_defense_power = (int) $baseDefense + rand(0, 30);
             $ai->tribe = $tribe;
 
-            // Fake user
-            $fakeUser = new \stdClass();
-            $fakeUser->username = 'NPC_' . Str::upper(Str::random(3)) . ($i + 1);
-            $ai->user = $fakeUser;
+            $ai->user = (object)[
+                'username' => 'NPC_' . Str::upper(Str::random(3))
+            ];
 
             $aiTargets->push($ai);
         }
@@ -81,7 +83,66 @@ class BattleController extends Controller
     }
 
     /**
-     * Fungsi utama serangan
+     * =============================
+     * TRAINING VIEW
+     * =============================
+     */
+    public function showTraining()
+    {
+        $userKingdom = Auth::user()->kingdom;
+
+        // Generate AI (dan simpan ke session)
+        $aiTargets = $this->generateAiTargets(3, $userKingdom);
+        session(['training_ai' => $aiTargets]);
+
+        // Training history
+        $trainingHistory = Battle::where('attacker_id', $userKingdom->id)
+            ->where('type', 'training')
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        return view('game.training', compact(
+            'userKingdom',
+            'aiTargets',
+            'trainingHistory'
+        ));
+    }
+
+    /**
+     * =============================
+     * ATTACK TRAINING (AI ONLY)
+     * =============================
+     */
+    public function trainingAttack(Request $request)
+    {
+        $request->validate([
+            'defender_id' => 'required'
+        ]);
+
+        $attacker = Auth::user()->kingdom;
+
+        $aiTargets = session('training_ai', collect());
+        $defender = $aiTargets->firstWhere('id', $request->defender_id);
+
+        if (!$defender) {
+            return back()->with('error', 'Training target expired. Refresh page.');
+        }
+
+        return $this->resolveBattle(
+            $attacker,
+            null,
+            $defender->name,
+            $defender->total_troops,
+            $defender->total_defense_power,
+            'training'
+        );
+    }
+
+    /**
+     * =============================
+     * ATTACK (PVP / AI FALLBACK)
+     * =============================
      */
     public function attack(Request $request)
     {
@@ -89,109 +150,96 @@ class BattleController extends Controller
             'defender_id' => 'required'
         ]);
 
-        $user = Auth::user();
-        $attackerKingdom = $user->kingdom;
-        $defenderId = $request->input('defender_id');
+        $attacker = Auth::user()->kingdom;
+        $defenderId = $request->defender_id;
 
-        // ============================================================
-        //                     SERANGAN TERHADAP AI
-        // ============================================================
         if ($defenderId >= 100000) {
-
-            $aiTargets = $this->generateAiTargets(10, $attackerKingdom);
+            $aiTargets = $this->generateAiTargets(10, $attacker);
             $defender = $aiTargets->firstWhere('id', $defenderId);
 
             if (!$defender) {
-                return redirect()->back()->with('error', 'Target tidak ditemukan.');
+                return back()->with('error', 'Target tidak ditemukan.');
             }
 
             return $this->resolveBattle(
-                $attackerKingdom,
-                null,                   // defender = NULL (AI)
+                $attacker,
+                null,
                 $defender->name,
                 $defender->total_troops,
-                $defender->total_defense_power
+                $defender->total_defense_power,
+                'pvp'
             );
         }
 
-        // ============================================================
-        //                SERANGAN KE KERAJAAN ASLI
-        // ============================================================
         $defender = Kingdom::find($defenderId);
 
         if (!$defender) {
-            return redirect()->back()->with('error', 'Target tidak ditemukan.');
+            return back()->with('error', 'Target tidak ditemukan.');
         }
 
         return $this->resolveBattle(
-            $attackerKingdom,
+            $attacker,
             $defender,
             $defender->name,
             $defender->total_troops,
-            $defender->total_defense_power
+            $defender->total_defense_power,
+            'pvp'
         );
     }
 
     /**
-     * Penyelesaian pertempuran (AI atau Player)
+     * =============================
+     * CORE BATTLE ENGINE
+     * =============================
      */
     protected function resolveBattle(
         Kingdom $attacker,
-        $defenderModel,         // null jika AI
+        $defenderModel,
         string $defenderName,
         int $defTroops,
-        int $defPower
+        int $defPower,
+        string $type
     ) {
-        $attPower = $attacker->total_attack_power + mt_rand(-10, 10);
-        $defPower = $defPower + mt_rand(-10, 10);
-
-        $attTroops = (int) $attacker->total_troops;
-        $defTroops = (int) $defTroops;
+        $attPower = $attacker->total_attack_power + rand(-10, 10);
+        $defPower = $defPower + rand(-10, 10);
 
         $isWin = $attPower >= $defPower;
+        $isTraining = $type === 'training';
 
-        if ($isWin) {
+        $goldStolen = 0;
 
+        if ($isWin && !$isTraining) {
             $goldStolen = rand(10, 100);
             $attacker->gold += $goldStolen;
             $attacker->save();
-
-            Battle::create([
-                'attacker_id' => $attacker->id,
-                'defender_id' => $defenderModel->id ?? null,
-                'result' => 'win',
-                'gold_stolen' => $goldStolen,
-                'attacker_troops' => $attTroops,
-                'defender_troops' => $defTroops,
-                'attacker_power' => $attPower,
-                'defender_power' => $defPower,
-                'battle_log' => "You attacked {$defenderName} and looted {$goldStolen} gold."
-            ]);
-
-            return redirect()->route('game.battle')->with('battle_result', [
-                'result' => 'win',
-                'gold_stolen' => $goldStolen,
-                'log' => "You attacked {$defenderName} and looted {$goldStolen} gold."
-            ]);
         }
 
-        // When lose
         Battle::create([
             'attacker_id' => $attacker->id,
             'defender_id' => $defenderModel->id ?? null,
-            'result' => 'lose',
-            'gold_stolen' => 0,
-            'attacker_troops' => $attTroops,
+            'attacker_troops' => $attacker->total_troops,
             'defender_troops' => $defTroops,
             'attacker_power' => $attPower,
             'defender_power' => $defPower,
-            'battle_log' => "Your attack on {$defenderName} failed."
+            'gold_stolen' => $goldStolen,
+            'result' => $isWin ? 'win' : 'lose',
+            'battle_log' => $isTraining
+                ? "[TRAINING] Battle vs {$defenderName}"
+                : ($isWin
+                    ? "You attacked {$defenderName} and looted {$goldStolen} gold."
+                    : "Your attack on {$defenderName} failed."),
+            'type' => $type,
         ]);
 
-        return redirect()->route('game.battle')->with('battle_result', [
-            'result' => 'lose',
-            'gold_stolen' => 0,
-            'log' => "Your attack on {$defenderName} failed."
+        return redirect()->back()->with('battle_result', [
+            'result' => $isWin ? 'win' : 'lose',
+            'gold_stolen' => $goldStolen,
+            'log' => $isTraining
+                ? "Training battle against {$defenderName}"
+                : ($isWin
+                    ? "You looted {$goldStolen} gold."
+                    : "Attack failed.")
         ]);
     }
+
 }
