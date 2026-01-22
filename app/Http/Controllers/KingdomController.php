@@ -14,6 +14,8 @@ class KingdomController extends Controller
     public function showBuildings()
     {
         $kingdom = Auth::user()->kingdom;
+        $kingdom->updateResources(); // Auto-update resources
+        
         $buildings = Building::where('is_active', true)->get();
         $ownedBuildings = $kingdom->kingdomBuildings()->with('building')->get();
         
@@ -26,6 +28,7 @@ class KingdomController extends Controller
     public function getResources()
     {
         $kingdom = Auth::user()->kingdom;
+        $kingdom->updateResources(); // Auto-update before returning data
         
         return response()->json([
             'gold' => $kingdom->gold,
@@ -45,6 +48,8 @@ class KingdomController extends Controller
         ]);
 
         $kingdom = Auth::user()->kingdom;
+        $kingdom->updateResources(); // Update resources first
+        
         $building = Building::findOrFail($request->building_id);
 
         // Check if building is active
@@ -104,6 +109,8 @@ class KingdomController extends Controller
         ]);
 
         $kingdom = Auth::user()->kingdom;
+        $kingdom->updateResources(); // Update resources first
+        
         $kingdomBuilding = KingdomBuilding::with('building')
             ->where('kingdom_id', $kingdom->id)
             ->findOrFail($request->kingdom_building_id);
