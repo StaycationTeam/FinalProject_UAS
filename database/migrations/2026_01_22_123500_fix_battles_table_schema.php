@@ -34,6 +34,11 @@ return new class extends Migration
                 $table->foreignId('winner_id')->nullable()->after('gold_stolen')->constrained('kingdoms');
             }
             
+            // Add default value to type field if it exists
+            if (Schema::hasColumn('battles', 'type')) {
+                $table->string('type')->default('pvp')->change();
+            }
+            
             // Make sure troops columns are nullable with defaults
             $table->integer('attacker_troops')->default(0)->change();
             $table->integer('defender_troops')->default(0)->change();
