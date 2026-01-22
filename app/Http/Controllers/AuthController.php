@@ -6,10 +6,13 @@ use App\Models\User;
 use App\Models\Kingdom;
 use App\Models\Tribe;
 use App\Models\Troop;
+use App\Models\Building;
+use App\Models\KingdomBuilding;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 
 class AuthController extends Controller
 {
@@ -34,27 +37,47 @@ class AuthController extends Controller
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'username' => $request->username,
-            'password' => Hash::make($request->password),
-        ]);
+        DB::transaction(function() use ($request, &$user) {
+            // Create user
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'username' => $request->username,
+                'password' => Hash::make($request->password),
+            ]);
 
-        $kingdom = Kingdom::create([
-            'user_id' => $user->id,
-            'tribe_id' => $request->tribe_id,
-            'name' => $request->kingdom_name,
-            'gold' => 100,
-            'main_building_level' => 1,
-            'last_resource_update' => now(),
-        ]);
+            // Create kingdom
+            $kingdom = Kingdom::create([
+                'user_id' => $user->id,
+                'tribe_id' => $request->tribe_id,
+                'name' => $request->kingdom_name,
+                'gold' => 100,
+                'main_building_level' => 1,
+                'last_resource_update' => now(),
+            ]);
 
-        Troop::create([
-            'kingdom_id' => $kingdom->id,
-            'quantity' => 10,
-            'last_production_update' => now(),
-        ]);
+            // Create initial troops
+            Troop::create([
+                'kingdom_id' => $kingdom->id,
+                'quantity' => 10,
+                'last_production_update' => now(),
+            ]);
+
+            $kingdom->update(['total_troops' => 10]);
+
+            // Give main building
+            $mainBuilding = Building::where('type', 'main')->where('is_active', true)->first();
+            if ($mainBuilding) {
+                KingdomBuilding::create([
+                    'kingdom_id' => $kingdom->id,
+                    'building_id' => $mainBuilding->id,
+                    'quantity' => 1,
+                    'level' => 1,
+                ]);
+            }
+
+            $kingdom->updatePower();
+        });
 
         Auth::login($user);
 
