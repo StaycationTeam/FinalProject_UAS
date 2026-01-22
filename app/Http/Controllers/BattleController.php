@@ -74,6 +74,9 @@ class BattleController extends Controller
             return redirect()->back()->with('error', 'You have no troops to attack!');
         }
 
+        // Initialize result variable
+        $result = null;
+
         DB::transaction(function() use ($attacker, $defender, &$result) {
             $attackPower = $attacker->calculateTotalAttackPower();
             $defensePower = $defender->calculateTotalDefensePower();
@@ -93,6 +96,7 @@ class BattleController extends Controller
                 $powerDifference = $attackPower - $defensePower;
                 $defenderTroops = $defender->troops;
                 
+                $troopsKilled = 0;
                 if ($defenderTroops && $defenderTroops->quantity > 0) {
                     $troopsKilled = (int) min($defenderTroops->quantity, ceil($powerDifference / 10));
                     $defenderTroops->decrement('quantity', $troopsKilled);
@@ -104,7 +108,8 @@ class BattleController extends Controller
                     'message' => "Victory! You stole {$goldStolen} gold from {$defender->name}!",
                     'gold_stolen' => $goldStolen,
                     'attacker_troops_lost' => 0,
-                    'defender_troops_lost' => $troopsKilled ?? 0,
+                    'defender_troops_lost' => $troopsKilled,
+                    'winner_id' => $attacker->id,
                 ];
             } else {
                 // DEFENDER WINS - All attacker troops die
@@ -118,6 +123,7 @@ class BattleController extends Controller
                         'gold_stolen' => 0,
                         'attacker_troops_lost' => 0,
                         'defender_troops_lost' => 0,
+                        'winner_id' => $defender->id,
                     ];
                     return;
                 }
@@ -131,6 +137,7 @@ class BattleController extends Controller
                 $powerDifference = $defensePower - $attackPower;
                 $defenderTroops = $defender->troops;
                 
+                $troopsLost = 0;
                 if ($defenderTroops && $defenderTroops->quantity > 0) {
                     // Calculate surviving troops
                     $troopDefenseValue = $powerDifference / $defenderTroops->quantity;
@@ -139,8 +146,6 @@ class BattleController extends Controller
                     
                     $defenderTroops->update(['quantity' => $survivingTroops]);
                     $defender->update(['total_troops' => $survivingTroops]);
-                } else {
-                    $troopsLost = 0;
                 }
 
                 $result = [
@@ -149,17 +154,18 @@ class BattleController extends Controller
                     'gold_stolen' => 0,
                     'attacker_troops_lost' => $attackerTroopsKilled,
                     'defender_troops_lost' => $troopsLost,
+                    'winner_id' => $defender->id,
                 ];
             }
 
-            // Record battle
+            // Record battle with correct winner_id
             Battle::create([
                 'attacker_id' => $attacker->id,
                 'defender_id' => $defender->id,
                 'attacker_troops' => $attacker->total_troops,
                 'defender_troops' => $defender->total_troops,
                 'gold_stolen' => $result['gold_stolen'],
-                'winner_id' => $result['success'] ? $attacker->id : $defender->id,
+                'winner_id' => $result['winner_id'],
             ]);
 
             // Update power calculations
