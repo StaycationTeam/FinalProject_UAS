@@ -220,6 +220,7 @@
             background-color: rgba(30, 41, 59, 0.5) !important;
         }
     </style>
+    @yield('style')
 </head>
 <body>
     <!-- Navigation -->
@@ -253,6 +254,11 @@
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('game.battle') ? 'active' : '' }}" href="{{ route('game.battle') }}">
                             <i class="fas fa-skull-crossbones me-1"></i> Battle
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('game.training') ? 'active' : '' }}" href="{{ route('game.training') }}">
+                            <i class="fas fa-dumbbell me-1"></i> Training
                         </a>
                     </li>
                     <li class="nav-item">
