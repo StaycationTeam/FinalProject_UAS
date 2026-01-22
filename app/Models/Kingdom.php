@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 class Kingdom extends Model
 {
@@ -82,12 +83,7 @@ class Kingdom extends Model
     public function getTotalGoldProductionPerMinute()
     {
         $baseProduction = 5; // Default 5 gold per minute
-        $mineProduction = $this->kingdomBuildings()
-            ->whereHas('building', function($q) {
-                $q->where('type', 'mine');
-            })
-            ->get()
-            ->sum('total_gold_production');
+        $mineProduction = $this->mines_count * 10; // Each mine = +10 gold/min
         
         return $baseProduction + $mineProduction;
     }
@@ -97,12 +93,10 @@ class Kingdom extends Model
      */
     public function getTotalTroopProductionPerMinute()
     {
-        return $this->kingdomBuildings()
-            ->whereHas('building', function($q) {
-                $q->where('type', 'barracks');
-            })
-            ->get()
-            ->sum('total_troop_production');
+        $baseProduction = $this->tribe->troop_production_rate ?? 3;
+        $barracksProduction = $this->barracks_count * 5; // Each barracks = +5 troops/min
+        
+        return $baseProduction + $barracksProduction;
     }
 
     /**
@@ -110,7 +104,39 @@ class Kingdom extends Model
      */
     public function getTotalDefenseBonus()
     {
-        return $this->kingdomBuildings()->get()->sum('total_defense_bonus');
+        return $this->walls_count * 10; // Each wall = +10 defense
+    }
+
+    /**
+     * Update resources based on time elapsed since last update
+     */
+    public function updateResources()
+    {
+        $now = Carbon::now();
+        $lastUpdate = $this->last_resource_update ?? $this->created_at;
+        
+        // Calculate minutes elapsed
+        $minutesElapsed = $now->diffInMinutes($lastUpdate);
+        
+        if ($minutesElapsed < 1) {
+            return; // No update needed if less than 1 minute
+        }
+        
+        // Calculate production
+        $goldProduced = $this->getTotalGoldProductionPerMinute() * $minutesElapsed;
+        $troopsProduced = $this->getTotalTroopProductionPerMinute() * $minutesElapsed;
+        
+        // Update kingdom
+        $this->gold += $goldProduced;
+        $this->total_troops += $troopsProduced;
+        $this->last_resource_update = $now;
+        $this->save();
+        
+        // Also update troops model if exists
+        if ($this->troops) {
+            $this->troops->quantity += $troopsProduced;
+            $this->troops->save();
+        }
     }
 
     /**
