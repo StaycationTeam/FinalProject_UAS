@@ -141,10 +141,13 @@ class Kingdom extends Model
 
     /**
      * Check if kingdom can be attacked
+     * RULE: Kingdom must have at least 1 barracks AND 1 gold mine
      */
     public function canBeAttacked()
     {
-        return $this->hasBuilding('barracks') && $this->hasBuilding('mine');
+        // Use legacy columns for reliable check
+        // Kingdom MUST have both barracks_count >= 1 AND mines_count >= 1
+        return ($this->barracks_count >= 1) && ($this->mines_count >= 1);
     }
 
     public function calculateTotalAttackPower()
