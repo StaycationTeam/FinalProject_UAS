@@ -35,6 +35,7 @@ class KingdomController extends Controller
             return redirect()->back()->with('error', 'Not enough gold!');
         }
 
+        $kingdom->updatePower();
         $this->buildingService->buildBarracks($kingdom, $building);
         
         return redirect()->back()->with('success', 'Barracks built successfully!');
@@ -65,6 +66,7 @@ class KingdomController extends Controller
             return redirect()->back()->with('error', 'Not enough gold!');
         }
 
+        $kingdom->updatePower();
         $this->buildingService->buildWalls($kingdom, $building);
         
         return redirect()->back()->with('success', 'Walls built successfully!');

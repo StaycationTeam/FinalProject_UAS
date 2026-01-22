@@ -68,4 +68,12 @@ class Kingdom extends Model
         
         return $melee_defense + $range_defense + $magic_defense + $walls_bonus;
     }
+
+    public function updatePower()
+    {
+        $this->total_attack_power = $this->calculateTotalAttackPower();
+        $this->total_defense_power = $this->calculateTotalDefensePower();
+        $this->save();
+    }
+
 }

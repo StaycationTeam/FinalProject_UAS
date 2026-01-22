@@ -234,5 +234,19 @@
         @endif
     </div>
 </div>
+<style>
+.ranking-table,
+.ranking-table th,
+.ranking-table td,
+.ranking-table thead th,
+.ranking-table tbody td {
+    color: #ffffff !important;
+}
 
+.ranking-table,
+.ranking-table th,
+.ranking-table td {
+    border-color: #ffffff !important;
+}
+</style>
 @endsection

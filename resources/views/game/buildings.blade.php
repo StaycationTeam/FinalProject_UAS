@@ -26,7 +26,7 @@
                 <div class="col-md-6 col-lg-3 mb-4">
                     <div class="building-card">
                         <div class="building-icon">🏰</div>
-                        <h5>Main Building</h5>
+                        <h5>Castle Kingdom</h5>
                         <p class="text-muted">Your kingdom's central structure</p>
                         <div class="mb-3">
                             <strong>Level: {{ $kingdom->main_building_level }}</strong>

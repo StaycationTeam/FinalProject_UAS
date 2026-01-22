@@ -63,7 +63,7 @@
                             <h6>Buildings</h6>
                             <ul class="list-group">
                                 <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    Main Building
+                                    Castle Kingdom
                                     <span class="badge bg-primary rounded-pill">Level {{ $kingdom->main_building_level }}</span>
                                 </li>
                                 <li class="list-group-item d-flex justify-content-between align-items-center">

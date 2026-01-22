@@ -6,6 +6,7 @@ use App\Http\Controllers\GameController;
 use App\Http\Controllers\KingdomController;
 use App\Http\Controllers\BattleController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminAuthController;
 use App\Http\Controllers\Auth\RegisterController;
 
 // Authentication Routes
@@ -43,6 +44,27 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/tribes/{id}', [AdminController::class, 'updateTribe'])->name('admin.tribes.update');
         Route::get('/buildings', [AdminController::class, 'buildingSettings'])->name('admin.buildings');
         Route::post('/buildings/{id}', [AdminController::class, 'updateBuilding'])->name('admin.buildings.update');
+    });
+});
+
+Route::prefix('admin')->group(function () {
+
+    // Login admin
+    Route::get('/login', [AdminAuthController::class, 'showLogin'])
+        ->name('admin.login');
+
+    Route::post('/login', [AdminAuthController::class, 'login']);
+
+    Route::post('/logout', [AdminAuthController::class, 'logout'])
+        ->name('admin.logout');
+
+    // Protected admin area
+    Route::middleware('admin')->group(function () {
+        Route::get('/dashboard', [AdminController::class, 'dashboard'])
+            ->name('admin.dashboard');
+
+        Route::get('/buildings', [AdminController::class, 'buildingSettings']);
+        Route::put('/buildings/{id}', [AdminController::class, 'updateBuilding']);
     });
 });
 
