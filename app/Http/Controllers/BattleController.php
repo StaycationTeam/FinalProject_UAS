@@ -52,15 +52,22 @@ class BattleController extends Controller
         
         $defender = Kingdom::with('troops')->findOrFail($request->defender_id);
 
-        // Validation
+        // Validation 1: Cannot attack yourself
         if ($attacker->id === $defender->id) {
             return redirect()->back()->with('error', 'You cannot attack yourself!');
         }
 
+        // Validation 2: Attacker must have barracks AND mine to attack
+        if (!$attacker->canBeAttacked()) {
+            return redirect()->back()->with('error', 'You need at least 1 Barracks and 1 Gold Mine to attack other kingdoms!');
+        }
+
+        // Validation 3: Defender must be attackable
         if (!$defender->canBeAttacked()) {
             return redirect()->back()->with('error', 'This kingdom cannot be attacked yet (missing barracks or mine).');
         }
 
+        // Validation 4: Must have troops
         if ($attacker->total_troops <= 0) {
             return redirect()->back()->with('error', 'You have no troops to attack!');
         }
