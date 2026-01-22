@@ -89,7 +89,13 @@
                                             {{ $kingdom->tribe->name }}
                                         </span>
                                     </td>
-                                    <td>{{ $kingdom->user->username }}</td>
+                                    <td>
+                                        @if($kingdom->user)
+                                            {{ $kingdom->user->username }}
+                                        @else
+                                            <span class="badge bg-secondary">🤖 AI Bot</span>
+                                        @endif
+                                    </td>
                                     <td>
                                         <div class="power-value">
                                             {{ number_format($kingdom->total_attack_power) }}
@@ -153,7 +159,12 @@
                                         <div class="flex-grow-1">
                                             <strong>{{ $kingdom->name }}</strong>
                                             <div class="small text-muted">
-                                                {{ $kingdom->user->username }} • {{ $kingdom->tribe->name }}
+                                                @if($kingdom->user)
+                                                    {{ $kingdom->user->username }}
+                                                @else
+                                                    🤖 AI Bot
+                                                @endif
+                                                 • {{ $kingdom->tribe->name }}
                                             </div>
                                         </div>
                                         <div class="text-end">
