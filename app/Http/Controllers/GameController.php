@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Kingdom;
 use App\Models\Battle;
 use App\Models\Troop;
+use App\Models\TribeAppearancePart;
 use App\Services\ResourceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -36,7 +37,13 @@ class GameController extends Controller
             ->take(5)
             ->get();
 
-        return view('game.dashboard', compact('kingdom', 'recentBattles'));
+        // Ambil avatar parts default untuk tribe ini
+        $avatarParts = TribeAppearancePart::where('tribe_id', $kingdom->tribe_id)
+            ->where('is_default', true)
+            ->orderBy('display_order')
+            ->get();
+
+        return view('game.dashboard', compact('kingdom', 'recentBattles', 'avatarParts'));
     }
 
     /**

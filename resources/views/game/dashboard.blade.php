@@ -53,9 +53,21 @@
                 </div>
                 <div class="card-body">
                     <div class="text-center mb-4">
-                        <div class="mb-2">
-                            <i class="fas fa-crown text-gold fa-3x"></i>
+                        <!-- Modular Avatar Container -->
+                        <div class="mb-2 position-relative mx-auto" style="width: 120px; height: 120px;">
+                            @forelse($avatarParts as $part)
+                                <img src="{{ asset('storage/' . $part->image_url) }}" 
+                                     alt="{{ $part->name }}" 
+                                     class="position-absolute top-0 start-0 w-100 h-100"
+                                     style="z-index: {{ $part->part_type == 'body' ? 1 : ($part->part_type == 'head' ? 2 : 3) }}; object-fit: contain;">
+                            @empty
+                                <!-- Fallback if no parts are configured -->
+                                <div class="d-flex align-items-center justify-content-center h-100 w-100">
+                                    <i class="fas fa-crown text-gold fa-3x"></i>
+                                </div>
+                            @endforelse
                         </div>
+
                         <h3 class="fw-bold mb-1">{{ $kingdom->name }}</h3>
                         <div class="tribe-badge mb-3">
                             {{ $kingdom->tribe->name }}
