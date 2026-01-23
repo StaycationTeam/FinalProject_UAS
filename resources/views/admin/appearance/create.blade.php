@@ -83,19 +83,32 @@
                 @enderror
             </div>
 
-            <div class="mb-3">
-                <label for="image" class="form-label">Image <span class="text-danger">*</span></label>
-                <input type="file" 
-                       class="form-control @error('image') is-invalid @enderror" 
-                       id="image" 
-                       name="image" 
-                       accept="image/*"
-                       required
-                       onchange="previewImage(event)">
-                <small class="text-muted">Max size: 2MB. Allowed formats: JPEG, PNG, JPG, GIF, SVG</small>
-                @error('image')
-                    <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
+            <div class="mb-3 border p-3 rounded bg-light">
+                <label class="form-label fw-bold">Image Source <span class="text-danger">*</span></label>
+                <p class="text-muted small">Choose either to upload a file OR provide a URL.</p>
+
+                <div class="mb-3">
+                    <label for="image" class="form-label">Option 1: Upload File</label>
+                    <input type="file" 
+                           class="form-control @error('image') is-invalid @enderror" 
+                           id="image" 
+                           name="image" 
+                           accept="image/*"
+                           onchange="previewImage(event)">
+                </div>
+
+                <div class="text-center my-2 text-muted">- OR -</div>
+
+                <div class="mb-3">
+                    <label for="image_url_text" class="form-label">Option 2: Image URL</label>
+                    <input type="url" 
+                           class="form-control @error('image_url_text') is-invalid @enderror" 
+                           id="image_url_text" 
+                           name="image_url_text" 
+                           value="{{ old('image_url_text') }}"
+                           placeholder="https://example.com/image.png"
+                           oninput="previewUrl(this.value)">
+                </div>
                 
                 <!-- Image Preview -->
                 <div id="imagePreview" class="mt-3" style="display: none;">
@@ -180,12 +193,25 @@
 function previewImage(event) {
     const file = event.target.files[0];
     if (file) {
+        // Clear URL input if file is selected
+        document.getElementById('image_url_text').value = '';
+        
         const reader = new FileReader();
         reader.onload = function(e) {
             document.getElementById('preview').src = e.target.result;
             document.getElementById('imagePreview').style.display = 'block';
         }
         reader.readAsDataURL(file);
+    }
+}
+
+function previewUrl(url) {
+    if (url) {
+        // Clear file input if URL is typed
+        document.getElementById('image').value = '';
+        
+        document.getElementById('preview').src = url;
+        document.getElementById('imagePreview').style.display = 'block';
     }
 }
 

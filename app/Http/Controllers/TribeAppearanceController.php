@@ -14,12 +14,10 @@ class TribeAppearanceController extends Controller
     {
         $query = TribeAppearancePart::with('tribe');
 
-        // Filter by tribe
         if ($request->filled('tribe_id')) {
             $query->where('tribe_id', $request->tribe_id);
         }
 
-        // Filter by part type
         if ($request->filled('part_type')) {
             $query->where('part_type', $request->part_type);
         }
@@ -46,20 +44,23 @@ class TribeAppearanceController extends Controller
                 'tribe_id' => 'required|exists:tribes,id',
                 'part_type' => 'required|in:head,body,legs,arms',
                 'name' => 'required|string|max:255',
-                'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+                'image' => 'nullable|required_without:image_url_text|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+                'image_url_text' => 'nullable|required_without:image|url',
                 'display_order' => 'nullable|integer|min:0',
                 'description' => 'nullable|string',
             ]);
 
-            // Handle image upload
+            // Handle image logic
             if ($request->hasFile('image')) {
                 $image = $request->file('image');
                 $filename = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
                 $path = $image->storeAs('appearance_parts', $filename, 'public');
                 $validated['image_url'] = $path;
+            } else {
+                // Use the text URL
+                $validated['image_url'] = $request->image_url_text;
             }
 
-            // If this is set as default, unset other defaults for same tribe and type
             if ($request->has('is_default') && $request->is_default) {
                 TribeAppearancePart::where('tribe_id', $validated['tribe_id'])
                     ->where('part_type', $validated['part_type'])
@@ -75,19 +76,13 @@ class TribeAppearanceController extends Controller
             Log::info('Appearance Part Created', ['name' => $validated['name']]);
 
             return redirect()->route('admin.appearance.index')
-                ->with('success', 'Appearance part "' . $validated['name'] . '" created successfully!');
+                ->with('success', 'Appearance part created successfully!');
 
         } catch (\Illuminate\Validation\ValidationException $e) {
-            return redirect()->back()
-                ->withErrors($e->validator)
-                ->withInput();
-
+            return redirect()->back()->withErrors($e->validator)->withInput();
         } catch (\Exception $e) {
             Log::error('Failed to create appearance part: ' . $e->getMessage());
-            
-            return redirect()->back()
-                ->with('error', 'Failed to create appearance part: ' . $e->getMessage())
-                ->withInput();
+            return redirect()->back()->with('error', 'Failed: ' . $e->getMessage())->withInput();
         }
     }
 
@@ -107,24 +102,26 @@ class TribeAppearanceController extends Controller
                 'part_type' => 'required|in:head,body,legs,arms',
                 'name' => 'required|string|max:255',
                 'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+                'image_url_text' => 'nullable|url',
                 'display_order' => 'nullable|integer|min:0',
                 'description' => 'nullable|string',
             ]);
 
-            // Handle new image upload
+            // Handle image update
             if ($request->hasFile('image')) {
-                // Delete old image
-                if ($appearance->image_url && Storage::disk('public')->exists($appearance->image_url)) {
+                // Delete old if it was a local file
+                if ($appearance->image_url && !filter_var($appearance->image_url, FILTER_VALIDATE_URL) && Storage::disk('public')->exists($appearance->image_url)) {
                     Storage::disk('public')->delete($appearance->image_url);
                 }
-
                 $image = $request->file('image');
                 $filename = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
                 $path = $image->storeAs('appearance_parts', $filename, 'public');
                 $validated['image_url'] = $path;
+            } elseif ($request->filled('image_url_text')) {
+                // If user provided a URL string, use it
+                $validated['image_url'] = $request->image_url_text;
             }
 
-            // If this is set as default, unset other defaults
             if ($request->has('is_default') && $request->is_default) {
                 TribeAppearancePart::where('tribe_id', $validated['tribe_id'])
                     ->where('part_type', $validated['part_type'])
@@ -141,91 +138,44 @@ class TribeAppearanceController extends Controller
             Log::info('Appearance Part Updated', ['id' => $appearance->id]);
 
             return redirect()->route('admin.appearance.index')
-                ->with('success', 'Appearance part "' . $appearance->name . '" updated successfully!');
+                ->with('success', 'Appearance part updated successfully!');
 
         } catch (\Illuminate\Validation\ValidationException $e) {
-            return redirect()->back()
-                ->withErrors($e->validator)
-                ->withInput();
-
+            return redirect()->back()->withErrors($e->validator)->withInput();
         } catch (\Exception $e) {
-            Log::error('Failed to update appearance part: ' . $e->getMessage());
-            
-            return redirect()->back()
-                ->with('error', 'Failed to update appearance part: ' . $e->getMessage())
-                ->withInput();
+            Log::error('Failed to update: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed: ' . $e->getMessage())->withInput();
         }
     }
 
     public function destroy(TribeAppearancePart $appearance)
     {
         try {
-            $name = $appearance->name;
-
-            // Delete image file
-            if ($appearance->image_url && Storage::disk('public')->exists($appearance->image_url)) {
+            if ($appearance->image_url && !filter_var($appearance->image_url, FILTER_VALIDATE_URL) && Storage::disk('public')->exists($appearance->image_url)) {
                 Storage::disk('public')->delete($appearance->image_url);
             }
 
             $appearance->delete();
-
-            Log::info('Appearance Part Deleted', ['name' => $name]);
-
-            return redirect()->route('admin.appearance.index')
-                ->with('success', 'Appearance part "' . $name . '" deleted successfully!');
-
+            return redirect()->route('admin.appearance.index')->with('success', 'Part deleted successfully!');
         } catch (\Exception $e) {
-            Log::error('Failed to delete appearance part: ' . $e->getMessage());
-            
-            return redirect()->back()
-                ->with('error', 'Failed to delete appearance part: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to delete part.');
         }
     }
 
     public function toggleActive(TribeAppearancePart $appearance)
     {
-        try {
-            $appearance->update(['is_active' => !$appearance->is_active]);
-
-            $status = $appearance->is_active ? 'activated' : 'deactivated';
-
-            Log::info('Appearance Part Status Toggled', [
-                'id' => $appearance->id,
-                'status' => $status
-            ]);
-
-            return redirect()->back()
-                ->with('success', 'Appearance part "' . $appearance->name . '" ' . $status . ' successfully!');
-
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'Failed to toggle appearance part status.');
-        }
+        $appearance->update(['is_active' => !$appearance->is_active]);
+        return redirect()->back()->with('success', 'Status toggled successfully!');
     }
 
     public function setDefault(TribeAppearancePart $appearance)
     {
-        try {
-            // Unset other defaults for same tribe and type
-            TribeAppearancePart::where('tribe_id', $appearance->tribe_id)
-                ->where('part_type', $appearance->part_type)
-                ->where('id', '!=', $appearance->id)
-                ->update(['is_default' => false]);
+        TribeAppearancePart::where('tribe_id', $appearance->tribe_id)
+            ->where('part_type', $appearance->part_type)
+            ->where('id', '!=', $appearance->id)
+            ->update(['is_default' => false]);
 
-            $appearance->update(['is_default' => true]);
-
-            Log::info('Default Appearance Part Set', [
-                'id' => $appearance->id,
-                'tribe' => $appearance->tribe->name,
-                'part_type' => $appearance->part_type
-            ]);
-
-            return redirect()->back()
-                ->with('success', 'Default appearance part set successfully!');
-
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'Failed to set default appearance part.');
-        }
+        $appearance->update(['is_default' => true]);
+        return redirect()->back()->with('success', 'Default set successfully!');
     }
 }

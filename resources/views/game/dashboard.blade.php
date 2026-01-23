@@ -56,7 +56,12 @@
                         <!-- Modular Avatar Container -->
                         <div class="mb-2 position-relative mx-auto" style="width: 120px; height: 120px;">
                             @forelse($avatarParts as $part)
-                                <img src="{{ asset('storage/' . $part->image_url) }}" 
+                                @php
+                                    $imageUrl = filter_var($part->image_url, FILTER_VALIDATE_URL) 
+                                        ? $part->image_url 
+                                        : asset('storage/' . $part->image_url);
+                                @endphp
+                                <img src="{{ $imageUrl }}" 
                                      alt="{{ $part->name }}" 
                                      class="position-absolute top-0 start-0 w-100 h-100"
                                      style="z-index: {{ $part->part_type == 'body' ? 1 : ($part->part_type == 'head' ? 2 : 3) }}; object-fit: contain;">
@@ -74,6 +79,7 @@
                         </div>
                     </div>
                     
+                    <!-- Stats section remains unchanged -->
                     <div class="row g-2">
                         <div class="col-6">
                             <div class="stat-card">

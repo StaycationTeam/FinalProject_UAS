@@ -84,31 +84,52 @@
                 @enderror
             </div>
 
-            <div class="mb-3">
-                <label for="image" class="form-label">Image</label>
+            <div class="mb-3 border p-3 rounded bg-light">
+                <label class="form-label fw-bold">Image Source</label>
                 
-                <!-- Current Image -->
+                <!-- Current Image Display -->
                 <div class="mb-3">
                     <label class="form-label">Current Image:</label>
                     <div>
-                        <img src="{{ asset('storage/' . $appearance->image_url) }}" 
+                        @php
+                            $isUrl = filter_var($appearance->image_url, FILTER_VALIDATE_URL);
+                            $src = $isUrl ? $appearance->image_url : asset('storage/' . $appearance->image_url);
+                        @endphp
+                        <img src="{{ $src }}" 
                              alt="{{ $appearance->name }}" 
                              class="img-thumbnail" 
                              style="max-width: 200px; max-height: 200px;">
+                        @if($isUrl)
+                            <div class="text-muted small mt-1">Source: External URL</div>
+                        @else
+                            <div class="text-muted small mt-1">Source: Local File</div>
+                        @endif
                     </div>
                 </div>
 
-                <!-- Upload New Image -->
-                <input type="file" 
-                       class="form-control @error('image') is-invalid @enderror" 
-                       id="image" 
-                       name="image" 
-                       accept="image/*"
-                       onchange="previewImage(event)">
-                <small class="text-muted">Leave empty to keep current image. Max size: 2MB. Allowed formats: JPEG, PNG, JPG, GIF, SVG</small>
-                @error('image')
-                    <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
+                <div class="mb-3">
+                    <label for="image" class="form-label">Option 1: Upload New File</label>
+                    <input type="file" 
+                           class="form-control @error('image') is-invalid @enderror" 
+                           id="image" 
+                           name="image" 
+                           accept="image/*"
+                           onchange="previewImage(event)">
+                </div>
+
+                <div class="text-center my-2 text-muted">- OR -</div>
+
+                <div class="mb-3">
+                    <label for="image_url_text" class="form-label">Option 2: Image URL</label>
+                    <input type="url" 
+                           class="form-control @error('image_url_text') is-invalid @enderror" 
+                           id="image_url_text" 
+                           name="image_url_text" 
+                           value="{{ old('image_url_text', $isUrl ? $appearance->image_url : '') }}"
+                           placeholder="https://example.com/image.png"
+                           oninput="previewUrl(this.value)">
+                    <small class="text-muted">Enter a URL to use an external image instead.</small>
+                </div>
                 
                 <!-- New Image Preview -->
                 <div id="imagePreview" class="mt-3" style="display: none;">
@@ -193,12 +214,21 @@
 function previewImage(event) {
     const file = event.target.files[0];
     if (file) {
+        document.getElementById('image_url_text').value = '';
         const reader = new FileReader();
         reader.onload = function(e) {
             document.getElementById('preview').src = e.target.result;
             document.getElementById('imagePreview').style.display = 'block';
         }
         reader.readAsDataURL(file);
+    }
+}
+
+function previewUrl(url) {
+    if (url) {
+        document.getElementById('image').value = '';
+        document.getElementById('preview').src = url;
+        document.getElementById('imagePreview').style.display = 'block';
     }
 }
 
