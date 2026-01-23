@@ -53,21 +53,23 @@
                 </div>
                 <div class="card-body">
                     <div class="text-center mb-4">
-                        <!-- Modular Avatar Container -->
-                        <div class="mb-2 position-relative mx-auto" style="width: 120px; height: 120px;">
+                        <!-- Vertical Stack Avatar Container -->
+                        <!-- Height auto to fit stacked parts -->
+                        <div class="mb-2 mx-auto d-flex flex-column align-items-center justify-content-center" style="width: 120px;">
                             @forelse($avatarParts as $part)
                                 @php
                                     $imageUrl = filter_var($part->image_url, FILTER_VALIDATE_URL) 
                                         ? $part->image_url 
                                         : asset('storage/' . $part->image_url);
                                 @endphp
+                                <!-- Each part stacked vertically -->
                                 <img src="{{ $imageUrl }}" 
                                      alt="{{ $part->name }}" 
-                                     class="position-absolute top-0 start-0 w-100 h-100"
-                                     style="z-index: {{ $part->part_type == 'body' ? 1 : ($part->part_type == 'head' ? 2 : 3) }}; object-fit: contain;">
+                                     class="img-fluid mb-n2" 
+                                     style="width: 80px; height: 80px; object-fit: contain; position: relative; z-index: {{ 10 - $loop->iteration }};">
                             @empty
                                 <!-- Fallback if no parts are configured -->
-                                <div class="d-flex align-items-center justify-content-center h-100 w-100">
+                                <div class="d-flex align-items-center justify-content-center" style="height: 120px;">
                                     <i class="fas fa-crown text-gold fa-3x"></i>
                                 </div>
                             @endforelse
@@ -79,7 +81,6 @@
                         </div>
                     </div>
                     
-                    <!-- Stats section remains unchanged -->
                     <div class="row g-2">
                         <div class="col-6">
                             <div class="stat-card">
