@@ -20,7 +20,6 @@
                         <th>Name</th>
                         <th>Type</th>
                         <th>Gold Cost</th>
-                        <th>Level</th>
                         <th>Production</th>
                         <th>Defense</th>
                         <th>Status</th>
@@ -34,7 +33,6 @@
                             <td><strong>{{ $building->name }}</strong></td>
                             <td><span class="badge bg-info">{{ $building->type }}</span></td>
                             <td><i class="fas fa-coins text-warning"></i> {{ $building->gold_cost }}</td>
-                            <td>Lv. {{ $building->level }}</td>
                             <td>
                                 @if($building->gold_production > 0)
                                     <span class="badge bg-warning text-dark">Gold: {{ $building->gold_production }}</span>

@@ -103,20 +103,6 @@
                 </div>
 
                 <div class="col-md-3 mb-3">
-                    <label for="level" class="form-label">Level <span class="text-danger">*</span></label>
-                    <input type="number" 
-                           class="form-control @error('level') is-invalid @enderror" 
-                           id="level" 
-                           name="level" 
-                           value="{{ old('level', $building->level) }}" 
-                           min="1" 
-                           required>
-                    @error('level')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                <div class="col-md-3 mb-3">
                     <label for="gold_production" class="form-label">Gold Production</label>
                     <input type="number" 
                            class="form-control @error('gold_production') is-invalid @enderror" 
