@@ -149,7 +149,7 @@
                                     <span class="badge bg-success">+{{ $kingdom->barracks_count * 5 }}/min</span>
                                 </div>
                                 
-                                <div class="production-item d-flex justify-content-between align-items-center p-3 border rounded bg-light">
+                                <div class="production-item d-flex justify-content-between align-items-center p-3 border rounded">
                                     <div>
                                         <span class="fw-bold">Total Production</span>
                                         <div class="small text-muted">Combined training rate</div>
