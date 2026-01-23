@@ -63,10 +63,11 @@
                                         : asset('storage/' . $part->image_url);
                                 @endphp
                                 <!-- Each part stacked vertically -->
+                                <!-- Use d-block to force new line and margin-bottom to pull them closer -->
                                 <img src="{{ $imageUrl }}" 
                                      alt="{{ $part->name }}" 
-                                     class="img-fluid mb-n2" 
-                                     style="width: 80px; height: 80px; object-fit: contain; position: relative; z-index: {{ 10 - $loop->iteration }};">
+                                     class="d-block"
+                                     style="width: 80px; height: 80px; object-fit: contain; margin-top: -10px; z-index: 1;">
                             @empty
                                 <!-- Fallback if no parts are configured -->
                                 <div class="d-flex align-items-center justify-content-center" style="height: 120px;">
