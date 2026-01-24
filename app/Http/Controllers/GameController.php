@@ -73,7 +73,7 @@ class GameController extends Controller
         // Ambil semua troop milik kingdom
         $troops = Troop::where('kingdom_id', $kingdom->id)->get();
 
-        // 🔥 AMBIL RIWAYAT BATTLE (INI YANG KURANG)
+        // AMBIL RIWAYAT BATTLE (INI YANG KURANG)
         $recentBattles = Battle::where('attacker_id', $kingdom->id)
             ->orWhere('defender_id', $kingdom->id)
             ->latest()

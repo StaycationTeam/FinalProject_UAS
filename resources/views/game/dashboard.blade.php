@@ -56,6 +56,7 @@
                         <!-- Vertical Stack Avatar Container -->
                         <!-- Height auto to fit stacked parts -->
                         <div class="mb-2 mx-auto d-flex flex-column align-items-center justify-content-center" style="width: 120px;">
+                            <p>ARMOR PARTS</p>
                             @forelse($avatarParts as $part)
                                 @php
                                     $imageUrl = filter_var($part->image_url, FILTER_VALIDATE_URL) 

@@ -187,7 +187,7 @@ class BattleController extends Controller
         $kingdom = Auth::user()->kingdom;
         $kingdom->updateResources();
         
-        // Get AI kingdoms (kingdoms without user_id = AI/Bots)
+        // bikin AI Kingdom (kingdoms tanpa user_id = AI/Bots)
         $aiTargets = Kingdom::with(['tribe', 'troops'])
             ->whereNull('user_id') // Kingdoms without users = AI/Bots
             ->orderBy('tribe_id')
@@ -195,7 +195,7 @@ class BattleController extends Controller
             ->limit(20) // Increased limit to show all AI bots
             ->get();
         
-        // Get training history (battles with type='training')
+        // ambil dari history (battles dengan type='training')
         $trainingHistory = Battle::where('attacker_id', $kingdom->id)
             ->where('type', 'training')
             ->with(['defender'])
